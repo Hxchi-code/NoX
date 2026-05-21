@@ -8,11 +8,11 @@ def process():
     file = request.files['video']
     mode = request.form.get('mode')
     
-    # Simpan ke memori
+    
     in_mem = io.BytesIO(file.read())
     out_mem = io.BytesIO()
     
-    # Simpan sementara ke disk untuk ffmpeg
+
     with open("input.mp4", "wb") as f: f.write(in_mem.getvalue())
     
     if mode == 'bug':
