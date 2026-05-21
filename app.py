@@ -1,6 +1,5 @@
-from flask import Flask, render_template, request, send_file
-from moviepy.editor import VideoFileClip
-import os
+from flask import Flask, request, send_file
+import io
 
 app = Flask(__name__)
 
@@ -8,28 +7,18 @@ app = Flask(__name__)
 def process():
     file = request.files['video']
     mode = request.form.get('mode')
-    
-    input_path = "temp_in.mp4"
-    output_path = "temp_out.mp4"
-    file.save(input_path)
-    
-    try:
-        # Load video
-        clip = VideoFileClip(input_path)
-        
-        if mode == 'bug':
-            # Efek freeze/lag dengan memperlambat 5x
-            final = clip.fx(lambda c: c.speedx(0.2))
-        else:
-            final = clip
-            
-        final.write_videofile(output_path, codec="libx264", audio_codec="aac")
-        return send_file(output_path, as_attachment=True)
-    
-    except Exception as e:
-        return str(e), 500
-    finally:
-        if os.path.exists(input_path): os.remove(input_path)
+    data = bytearray(file.read())
+
+    # "Bypass" atau "Bug" dilakukan dengan modifikasi atom data
+    # Cari atom 'mvhd' (Movie Header) untuk mengubah durasi
+    mvhd = data.find(b'mvhd')
+    if mvhd != -1 and mode == 'bug':
+        # Ubah durasi secara manual di header (offset dari mvhd)
+        # Ini tidak merusak file karena kita hanya mengubah durasi metadata
+        data[mvhd+20:mvhd+24] = b'\xff\xff\xff\xff' 
+
+    out = io.BytesIO(data)
+    return send_file(out, mimetype='video/mp4', as_attachment=True, download_name=f"{mode}_{file.filename}")
 
 if __name__ == '__main__':
     app.run()
