@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>NOXVEILL ENGINE</title>
+    <style>
+        body { background: #0c0d10; color: #00ffff; font-family: monospace; display: flex; justify-content: center; padding: 20px; }
+        .wrapper { width: 100%; max-width: 450px; }
+        .feature-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-mode { flex: 1; padding: 10px; background: #111417; border: 1px solid #1a2c3a; color: #555; cursor: pointer; border-radius: 8px; font-weight: bold; }
+        .btn-mode.active { border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.1); }
+        .upload-zone { border: 2px dashed #1a2c3a; padding: 40px; text-align: center; border-radius: 12px; cursor: pointer; }
+        .btn-init { width: 100%; padding: 15px; margin-top: 20px; background: #f2c94c; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="feature-selector">
+        <button class="btn-mode active" id="btn-bypass" onclick="setMode('bypass')">BYPASS 120FPS</button>
+        <button class="btn-mode" id="btn-bug" onclick="setMode('bug')">BUG DURASI</button>
+    </div>
+    
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" hidden>
+        <div id="fileLabel">SELECT MEDIA</div>
+    </div>
+    
+    <button class="btn-init" onclick="runEngine()">INITIALIZE PROTOCOL</button>
+</div>
+
+<script>
+    let mode = 'bypass';
+    function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-'+m).classList.add('active');
+    }
+    
+    function runEngine() {
+        const file = document.getElementById('fileInput').files[0];
+        if(!file) return alert('Pilih file dulu!');
+        
+        const fd = new FormData();
+        fd.append('video', file);
+        fd.append('mode', mode);
+        
+        fetch('/convert', {method: 'POST', body: fd})
+        .then(res => res.blob()).then(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = mode + '_' + file.name;
+            a.click();
+        });
+    }
+</script>
+</body>
+</html>
