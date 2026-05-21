@@ -3,29 +3,22 @@ import os
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
 @app.route('/process', methods=['POST'])
 def process():
     file = request.files['video']
     mode = request.form.get('mode')
     
-    input_filename = f"input_{file.filename}"
-    output_filename = f"out_{file.filename}"
-    file.save(input_filename)
+    input_f = f"in_{file.filename}"
+    output_f = f"out_{file.filename}"
+    file.save(input_f)
     
-    # Menggunakan FFmpeg untuk manipulasi aman
     if mode == 'bug':
-        # Efek lag/freeze dengan memperlambat frame
-        os.system(f'ffmpeg -i {input_filename} -filter:v "setpts=5.0*PTS" -y {output_filename}')
+        # Menggunakan setpts agar durasi melambat (freeze) tanpa merusak file
+        os.system(f'ffmpeg -i {input_f} -filter:v "setpts=5.0*PTS" -c:a copy -y {output_f}')
     else:
-        # Bypass standar (remux agar kompatibel)
-        os.system(f'ffmpeg -i {input_filename} -c copy -movflags +faststart -y {output_filename}')
+        # Bypass standar (hanya copy stream)
+        os.system(f'ffmpeg -i {input_f} -c copy -movflags +faststart -y {output_f}')
     
-    return send_file(output_filename, as_attachment=True)
+    return send_file(output_f, as_attachment=True)
 
-if __name__ == '__main__':
-    app.run()
-
+# ... (tambahkan route lain seperti sebelumnya)
