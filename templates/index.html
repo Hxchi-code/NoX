@@ -2,55 +2,80 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>NOXVEILL ENGINE</title>
+    <title>NOXVEILL ENGINE V3.0</title>
     <style>
-        body { background: #0c0d10; color: #00ffff; font-family: monospace; display: flex; justify-content: center; padding: 20px; }
+        body { background: #0c0d10; color: #00ffff; font-family: 'Courier New', monospace; padding: 20px; display: flex; justify-content: center; }
         .wrapper { width: 100%; max-width: 450px; }
-        .feature-selector { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn-mode { flex: 1; padding: 10px; background: #111417; border: 1px solid #1a2c3a; color: #555; cursor: pointer; border-radius: 8px; font-weight: bold; }
-        .btn-mode.active { border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.1); }
-        .upload-zone { border: 2px dashed #1a2c3a; padding: 40px; text-align: center; border-radius: 12px; cursor: pointer; }
-        .btn-init { width: 100%; padding: 15px; margin-top: 20px; background: #f2c94c; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        /* Tombol 2 Fitur */
+        .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .btn-mode { padding: 12px; background: #111417; border: 1px solid #1a2c3a; color: #555; cursor: pointer; border-radius: 8px; font-weight: bold; font-size: 0.7rem; }
+        .btn-mode.active { border-color: #00ffff; color: #00ffff; background: rgba(0,255,255,0.05); }
+        
+        .upload-zone { border: 1px solid #1a2c3a; padding: 40px; text-align: center; border-radius: 12px; cursor: pointer; background: #111417; }
+        .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .info-box { background: #111417; padding: 10px; border-radius: 8px; border: 1px solid #1a2c3a; }
+        .box-val { font-size: 0.9rem; font-weight: bold; color: #eee; }
+        .log-box { margin-top: 15px; border-left: 2px solid #00ffff; padding-left: 10px; height: 100px; overflow-y: auto; font-size: 0.8rem; }
+        .init-btn { width: 100%; padding: 16px; background: #f2c94c; border: none; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; }
     </style>
 </head>
 <body>
 <div class="wrapper">
-    <div class="feature-selector">
-        <button class="btn-mode active" id="btn-bypass" onclick="setMode('bypass')">BYPASS 120FPS</button>
-        <button class="btn-mode" id="btn-bug" onclick="setMode('bug')">BUG DURASI</button>
+    <div class="feature-grid">
+        <button class="btn-mode active" id="btn-bypass" onclick="setMode('bypass', this)">BYPASS 120FPS</button>
+        <button class="btn-mode" id="btn-bug" onclick="setMode('bug', this)">BUG DURASI</button>
     </div>
     
     <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" hidden>
+        <input type="file" id="fileInput" hidden onchange="handleFile(this)">
         <div id="fileLabel">SELECT MEDIA</div>
     </div>
-    
-    <button class="btn-init" onclick="runEngine()">INITIALIZE PROTOCOL</button>
+
+    <div class="status-grid">
+        <div class="info-box"><div style="font-size:0.6rem">RESOLUTION</div><div class="box-val" id="res">---</div></div>
+        <div class="info-box"><div style="font-size:0.6rem">STATUS</div><div class="box-val" id="stat">READY</div></div>
+    </div>
+
+    <div class="log-box" id="logs">> System standing by...</div>
+    <button class="init-btn" onclick="run()">INITIALIZE PROTOCOL</button>
 </div>
 
 <script>
     let mode = 'bypass';
-    function setMode(m) {
+    function setMode(m, el) {
         mode = m;
         document.querySelectorAll('.btn-mode').forEach(b => b.classList.remove('active'));
-        document.getElementById('btn-'+m).classList.add('active');
+        el.classList.add('active');
     }
-    
-    function runEngine() {
+
+    function handleFile(input) {
+        const file = input.files[0];
+        document.getElementById('fileLabel').innerText = file.name;
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.onloadedmetadata = () => {
+            document.getElementById('res').innerText = video.videoWidth + 'x' + video.videoHeight;
+        };
+    }
+
+    async function run() {
         const file = document.getElementById('fileInput').files[0];
-        if(!file) return alert('Pilih file dulu!');
+        if(!file) return alert('Pilih video dulu!');
+        
+        document.getElementById('stat').innerText = "PROCESSING";
+        document.getElementById('logs').innerText += "\n> Processing " + mode + "...";
         
         const fd = new FormData();
         fd.append('video', file);
         fd.append('mode', mode);
         
-        fetch('/convert', {method: 'POST', body: fd})
-        .then(res => res.blob()).then(blob => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = mode + '_' + file.name;
-            a.click();
-        });
+        const res = await fetch('/process', {method:'POST', body: fd});
+        const blob = await res.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = mode + "_" + file.name;
+        a.click();
+        document.getElementById('stat').innerText = "SUCCESS";
     }
 </script>
 </body>
