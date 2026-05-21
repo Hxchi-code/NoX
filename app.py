@@ -1,26 +1,24 @@
-from flask import Flask, render_template, request, send_file
-import struct, io
+import subprocess
+from flask import Flask, request, send_file
+import os
 
 app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 @app.route('/process', methods=['POST'])
 def process():
     file = request.files['video']
     mode = request.form.get('mode')
-    data = bytearray(file.read())
-
-    if mode == 'bug':
-        stts_idx = data.find(b'stts')
-        if stts_idx != -1:
-            # Inject 0xFFFF ke entry pertama durasi frame
-            data[stts_idx + 16:stts_idx + 20] = struct.pack('>I', 0xFFFF)
     
-    output = io.BytesIO(data)
-    return send_file(output, mimetype='video/mp4', as_attachment=True, download_name=f"{mode}_{file.filename}")
-
-if __name__ == '__main__':
-    app.run()
+    input_path = f"temp_{file.filename}"
+    output_path = f"out_{file.filename}"
+    file.save(input_path)
+    
+    if mode == 'bug':
+        # Menggunakan filter setpts untuk membuat video jadi sangat lambat (efek lag/freeze)
+        # 10.0 adalah multiplier durasi. 
+        subprocess.run(['ffmpeg', '-i', input_path, '-filter:v', 'setpts=10.0*PTS', output_path])
+    else:
+        # Bypass standar (hanya remux ke mp4 agar faststart)
+        subprocess.run(['ffmpeg', '-i', input_path, '-c', 'copy', '-movflags', 'faststart', output_path])
+        
+    return send_file(output_path, as_attachment=True)
