@@ -1,24 +1,31 @@
-import subprocess
-from flask import Flask, request, send_file
+from flask import Flask, render_template, request, send_file
 import os
 
 app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/process', methods=['POST'])
 def process():
     file = request.files['video']
     mode = request.form.get('mode')
     
-    input_path = f"temp_{file.filename}"
-    output_path = f"out_{file.filename}"
-    file.save(input_path)
+    input_filename = f"input_{file.filename}"
+    output_filename = f"out_{file.filename}"
+    file.save(input_filename)
     
+    # Menggunakan FFmpeg untuk manipulasi aman
     if mode == 'bug':
-        # Menggunakan filter setpts untuk membuat video jadi sangat lambat (efek lag/freeze)
-        # 10.0 adalah multiplier durasi. 
-        subprocess.run(['ffmpeg', '-i', input_path, '-filter:v', 'setpts=10.0*PTS', output_path])
+        # Efek lag/freeze dengan memperlambat frame
+        os.system(f'ffmpeg -i {input_filename} -filter:v "setpts=5.0*PTS" -y {output_filename}')
     else:
-        # Bypass standar (hanya remux ke mp4 agar faststart)
-        subprocess.run(['ffmpeg', '-i', input_path, '-c', 'copy', '-movflags', 'faststart', output_path])
-        
-    return send_file(output_path, as_attachment=True)
+        # Bypass standar (remux agar kompatibel)
+        os.system(f'ffmpeg -i {input_filename} -c copy -movflags +faststart -y {output_filename}')
+    
+    return send_file(output_filename, as_attachment=True)
+
+if __name__ == '__main__':
+    app.run()
+
