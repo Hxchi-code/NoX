@@ -16,11 +16,10 @@ def process():
     file = request.files['video']
     mode = request.form.get('mode')
     
-    # Baca video langsung ke memori (Sesuai kodingan asli kamu yang terbukti stabil)
+    # Baca video langsung ke memori (TIDAK butuh akses folder/disk)
     data = bytearray(file.read())
 
-    # --- 1. FITUR BUG DURASI ---
-    # Pakai kodingan asli kamu yang sudah terbukti work 100%
+    # Mode BUG: Manipulasi struktur data biner video secara langsung
     if mode == 'bug':
         stts_pos = data.find(b'stts')
         if stts_pos != -1:
@@ -28,26 +27,11 @@ def process():
                 # Ubah metadata durasi frame agar player nge-lag (bug)
                 data[stts_pos + 16:stts_pos + 20] = b'\x00\x00\x4e\x20'
             except:
-                pass 
+                pass # Abaikan jika gagal agar file tidak corrupt
 
-    # --- 2. FITUR BYPASS ZERO COMPRESSION (TRIK SENZEYN) ---
-    # Otomatis aktif di semua mode (Bypass murni atau Bug + Bypass)
-    # Kita kunci headernya di byte ke-15 (Minor Version MP4) di bagian paling depan file.
-    # Ukuran file TETAP ASLI, tidak bergeser 1 byte pun, tapi MD5 berubah total!
-    try:
-        if len(data) > 15 and data[4:8] == b'ftyp':
-            data[15] = (data[15] + 1) % 256
-    except:
-        pass
-
-    # Kembalikan pakai kombinasi BytesIO + send_file milikmu agar ukuran utuh dan tidak terpotong
+    # Siapkan data untuk didownload
     output = io.BytesIO(data)
-    
-    # Penamaan file otomatis sesuai tombol
-    if mode == 'bug':
-        nama_file = f"Bug_Bypass_{file.filename}"
-    else:
-        nama_file = f"Bypass_{file.filename}"
+    nama_file = f"{mode}_{file.filename}"
     
     return send_file(
         output, 
