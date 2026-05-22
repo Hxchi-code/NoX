@@ -10,43 +10,51 @@ def index():
 
 @app.route('/process', methods=['POST'])
 def process():
+    # Cek apakah ada file yang diupload
     if 'video' not in request.files:
         return "Error: Tidak ada video yang diupload", 400
         
     file = request.files['video']
     mode = request.form.get('mode')
     
-    # Membaca mentahan file video langsung ke memori
+    # Baca video langsung ke memori (TIDAK butuh akses folder/disk)
     data = bytearray(file.read())
 
     # --- 1. FITUR BUG DURASI ---
-    # Hanya dijalankan jika user memilih tombol Bug
+    # Pakai kodingan asli kamu yang sudah terbukti work 100%
     if mode == 'bug':
         stts_pos = data.find(b'stts')
         if stts_pos != -1:
             try:
-                # Modifikasi metadata durasi frame agar video nge-lag (bug)
+                # Ubah metadata durasi frame agar player nge-lag (bug)
                 data[stts_pos + 16:stts_pos + 20] = b'\x00\x00\x4e\x20'
             except:
-                pass # Abaikan jika gagal agar file tetap aman
+                pass # Abaikan jika gagal agar file tidak corrupt
 
-    # --- 2. FITUR BYPASS (ZERO COMPRESSION) ---
-    # Diterapkan ke SEMUA mode secara otomatis (Bypass Murni ATAU Bug+Bypass)
-    # Cara kerja: Menyuntikkan Atom MP4 valid berisi data acak di akhir file.
-    # File akan lolos pemeriksaan duplikasi server dan terhindar dari kompresi burik.
-    bypass_size = 2048  # Menyuntikkan 2KB padding data Bypass
-    bypass_atom = bypass_size.to_bytes(4, byteorder='big') + b'free' + os.urandom(bypass_size - 8)
-    data.extend(bypass_atom)
+    # --- 2. FITUR BYPASS SENZEYN (ZERO COMPRESSION) ---
+    # Otomatis aktif di kedua fitur (Bypass murni ATAU Bug + Bypass sekalian)
+    # Kita suntikkan 'free' box valid di akhir file agar merubah MD5 secara unik
+    # Cara ini dijamin tidak akan merusak struktur efek bug durasi di atas
+    try:
+        bypass_signature = b'SenzeynBypassZeroCompression1080p60FPS' + os.urandom(16)
+        # Hitung ukuran box (panjang data + 8 byte header)
+        box_size = (len(bypass_signature) + 8).to_bytes(4, byteorder='big')
+        # Satukan menjadi struktur atom MP4 yang sah ([size][type][data])
+        free_box = box_size + b'free' + bypass_signature
+        # Tempel di paling akhir file video
+        data.extend(free_box)
+    except:
+        pass
 
-    # Siapkan file output untuk didownload
+    # Siapkan data untuk didownload
     output = io.BytesIO(data)
     
-    # Penamaan file otomatis agar kamu tahu hasilnya
+    # Penamaan file otomatis sesuai mode yang dipilih
     if mode == 'bug':
         nama_file = f"Bug_Bypass_{file.filename}"
     else:
         nama_file = f"Bypass_{file.filename}"
-        
+    
     return send_file(
         output, 
         mimetype='video/mp4', 
@@ -56,4 +64,3 @@ def process():
 
 if __name__ == '__main__':
     app.run()
-
