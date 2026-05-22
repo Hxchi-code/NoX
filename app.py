@@ -9,46 +9,26 @@ def index():
 
 @app.route('/process', methods=['POST'])
 def process():
-    if 'video' not in request.files:
-        return "Error: Tidak ada video yang diupload", 400
-        
     file = request.files['video']
     mode = request.form.get('mode')
-    
-    # Baca file mentah
     data = bytearray(file.read())
 
-    # --- JALUR 1: KODINGAN BUG ASLI LU ---
+    # --- BUG DURASI (KHUSUS VIDEO MENTAH) ---
+    # Kalau lu pake video hasil edit, fitur ini emang riskan corrupt
     if mode == 'bug':
         stts_pos = data.find(b'stts')
         if stts_pos != -1:
-            try:
-                # Ini kodingan ori lu yang aman dan work
-                data[stts_pos + 16:stts_pos + 20] = b'\x00\x00\x4e\x20'
-            except:
-                pass
-        nama_file = f"Bug_{file.filename}"
+            data[stts_pos + 16:stts_pos + 20] = b'\x00\x00\x4e\x20'
 
-    # --- JALUR 2: BYPASS AMAN (FREE BOX) ---
-    elif mode == 'bypass':
-        # Nambahin kotak kosong resmi MP4 di akhir file.
-        # Dijamin 100% GAK CORRUPT karena ini struktur MP4 yang sah.
-        data.extend(b'\x00\x00\x00\x08free')
-        nama_file = f"Bypass_{file.filename}"
-    
-    else:
-        # Jaga-jaga kalau mode gak kepilih
-        nama_file = f"Ori_{file.filename}"
+    # --- BYPASS (AMANKAN DENGAN 'udta' BOX) ---
+    # Ini trik paling stabil buat video hasil edit. 
+    # Kita nyelipin 'udta' (User Data) box yang kosong.
+    # Player bakal ngebaca ini sebagai tambahan info, bukan konten video.
+    padding = b'\x00\x00\x00\x1fudta\x00\x00\x00\x17meta\x00\x00\x00\x00'
+    data.extend(padding)
 
-    # Kirim hasil
     output = io.BytesIO(data)
-    return send_file(
-        output, 
-        mimetype='video/mp4', 
-        as_attachment=True, 
-        download_name=nama_file
-    )
+    return send_file(output, mimetype='video/mp4', as_attachment=True, download_name=f"Fixed_{file.filename}")
 
 if __name__ == '__main__':
     app.run()
-    
