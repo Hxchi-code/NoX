@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, send_file
 import io
-import os
 
 app = Flask(__name__)
 
@@ -17,11 +16,11 @@ def process():
     file = request.files['video']
     mode = request.form.get('mode')
     
-    # Baca video langsung ke memori (Sesuai kodingan kamu yang terbukti work)
+    # Baca video langsung ke memori (Sesuai kodingan asli kamu yang terbukti stabil)
     data = bytearray(file.read())
 
     # --- 1. FITUR BUG DURASI ---
-    # Pakai kodingan asli kamu yang sudah terbukti mantap
+    # Pakai kodingan asli kamu yang sudah terbukti work 100%
     if mode == 'bug':
         stts_pos = data.find(b'stts')
         if stts_pos != -1:
@@ -31,17 +30,17 @@ def process():
             except:
                 pass 
 
-    # --- 2. FITUR BYPASS ZERO COMPRESSION (UBAH MD5) ---
-    # Aktif otomatis di kedua mode (Bypass murni maupun Bug+Bypass)
-    # Kita tempel 16 byte data acak di paling akhir file video.
-    # Pemutar video & TikTok akan mengabaikan ekor file ini saat memutar video (Anti-Corrupt),
-    # tapi MD5 filenya berubah total jadi file baru (Bypass Sukses & Ukuran Tetap Utuh).
+    # --- 2. FITUR BYPASS ZERO COMPRESSION (TRIK SENZEYN) ---
+    # Otomatis aktif di semua mode (Bypass murni atau Bug + Bypass)
+    # Kita kunci headernya di byte ke-15 (Minor Version MP4) di bagian paling depan file.
+    # Ukuran file TETAP ASLI, tidak bergeser 1 byte pun, tapi MD5 berubah total!
     try:
-        data.extend(os.urandom(16))
+        if len(data) > 15 and data[4:8] == b'ftyp':
+            data[15] = (data[15] + 1) % 256
     except:
         pass
 
-    # Bungkus kembali pakai BytesIO agar transfer data ke HP stabil dan tidak kepotong
+    # Kembalikan pakai kombinasi BytesIO + send_file milikmu agar ukuran utuh dan tidak terpotong
     output = io.BytesIO(data)
     
     # Penamaan file otomatis sesuai tombol
